@@ -26,14 +26,6 @@ const lightBoxOptions = {
 
 let lightbox = new SimpleLightbox('.gallery__item', lightBoxOptions)
 
-async function onSearch() {
-   try {
-        const photos = await api.fetchPhotos();
-        printResult(photos);
-    } catch (error) {
-        handleError(error);
-    }
-};
 
 async function onSubmit(e) {
     e.preventDefault();
@@ -65,6 +57,14 @@ function printResult(photos) {
     loadMoreBtn.show();
     loadMoreBtn.enable();
     lightbox.refresh();
+};
+async function onSearch() {
+   try {
+        const photos = await api.fetchPhotos();
+        printResult(photos);
+    } catch (error) {
+        handleError(error);
+    }
 };
 
 function handleError (error) {
