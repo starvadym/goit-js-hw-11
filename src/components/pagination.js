@@ -23,7 +23,7 @@ const lightBoxOptions = {
 let lightbox = new SimpleLightbox('.gallery__item', lightBoxOptions)
 
 
-function onSubmit(e) {
+async function onSubmit(e) {
     e.preventDefault();
     const text = e.currentTarget.elements.searchQuery.value.trim();
     //console.log(text);
@@ -33,8 +33,13 @@ function onSubmit(e) {
     }
     resetView();
     api.q = text;
-    api.fetchPhotos().then(printResult)
-        // .catch(handleError);
+    try {
+        const photos = await api.fetchPhotos();
+        printResult(photos);
+    } catch (error) {
+        handleError(error);
+    }
+    //api.fetchPhotos().then(printResult).catch(handleError);
 
 };
 
@@ -49,39 +54,47 @@ function printResult(photos) {
     }
     const markup = createPhotoMarkupList(photoArray);
     refs.output.insertAdjacentHTML("beforeend", markup);
-    if (page < 1) {
+    if (page < 1 && photoArray.length!==0) {
         Notiflix.Notify.success(`Hooray! We found ${photoQuantity} images.`)
     }
     loadMoreBtn.show();
     loadMoreBtn.enable();
     lightbox.refresh();
-    const { height: cardHeight } = document.querySelector(".gallery").firstElementChild.getBoundingClientRect();
-    window.scrollBy({top: cardHeight * 10,  behavior: "smooth"});
-
 };
 
-// function handleError (err) {
-//     refs.output.insertAdjacentHTML = '';
-//     console.log(err.message);
-// };
+function handleError (error) {
+    resetView();
+    window.removeEventListener('scroll', onScroll);
+  if (error.response.status === 400) {
+    Notify.failure("We're sorry, but you've reached the end of search results.");
+    return;
+  }
+  Notify.failure('Sorry, there is no response from server. Please try again.');
+
+};
 
 refs.form.addEventListener('submit', onSubmit);
 
 
-function onLoadMore () {
+async function onLoadMore () {
     // console.log('click');
     page = api.incrementPage();
     console.log(`Page No.: ${page}`);
-    if (page === Math.round(photoQuantity/arrayLength)) {
+    if (page >= Math.round(photoQuantity/arrayLength)) {
         loadMoreBtn.hide();
         setTimeout(() => {
           Notiflix.Notify.failure("We're sorry, but you've reached the end of search results.");
         }, 500);
+        window.removeEventListener('scroll', onScroll);
         return;
-      }
-    api.fetchPhotos().then(printResult);
-        // .catch(handleError);
-
+    }
+    try {
+        const photos = await api.fetchPhotos();
+        printResult(photos);
+    } catch (error) {
+        handleError(error);
+    }
+    //api.fetchPhotos().then(printResult).catch(handleError);
 };
 
 
@@ -100,8 +113,9 @@ function onScroll() {
             scrollHeight,
             clientHeight
         } = document.documentElement;
-
-      if (scrollTop + clientHeight>= scrollHeight - 5) {
+    const { height: cardHeight } = document.querySelector(".gallery").firstElementChild.getBoundingClientRect();
+    if (scrollTop + clientHeight >= scrollHeight - 15) {
+   window.scrollBy({top: cardHeight * 2,  behavior: "smooth"});
    onLoadMore();
   }
 }
