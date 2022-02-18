@@ -23,13 +23,11 @@ class ApiService{
         try {
             const photos = await axios.get(`/?key=${this.API_KEY}&q=${this.#q}&${queryParams}`);
             return photos;
-            //console.log(photos.data.hits);
         } catch (error) {
            console.error(error);
         }
 
     };
-
     set q(value) {
       this.#q = value;
     }

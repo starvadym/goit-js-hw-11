@@ -38,7 +38,6 @@ async function onSearch() {
 async function onSubmit(e) {
     e.preventDefault();
     const text = e.currentTarget.elements.searchQuery.value.trim();
-    //console.log(text);
     if (!text) {
     alert('Enter the text!');
     return;
@@ -47,6 +46,7 @@ async function onSubmit(e) {
     api.q = text;
     await onSearch();
 };
+refs.form.addEventListener('submit', onSubmit);
 
 function printResult(photos) {
     loadMoreBtn.disable();
@@ -76,9 +76,6 @@ function handleError (error) {
   }
   Notify.failure('Sorry, there is no response from server. Please try again.');
 };
-
-refs.form.addEventListener('submit', onSubmit);
-
 
 async function onLoadMore () {
     page = api.incrementPage();
