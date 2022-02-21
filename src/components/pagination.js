@@ -4,13 +4,13 @@ import createPhotoMarkupList from '../templates/photoMarkup';
 import BtnService from '../components/buttonClass';
 import Notiflix from 'notiflix';
 import SimpleLightbox from "simplelightbox";
-// Дополнительный импорт стилей
 import "simplelightbox/dist/simple-lightbox.min.css";
-import throttle from 'lodash.throttle';
 
+
+const observer = new IntersectionObserver(onObserve, { threshold: 0.7 });
+let isObserving = false;
 
 const loadMoreBtn = new BtnService({ selector: '.load-more', hidden: true });
-const onScrollThrottled = throttle(onScroll, 250);
 
 let photoQuantity = null;
 let page = null;
@@ -28,7 +28,10 @@ let lightbox = new SimpleLightbox('.gallery__item', lightBoxOptions)
 
 
 async function onSubmit(e) {
-    e.preventDefault();
+  e.preventDefault();
+  if (isObserving) {
+    observer.unobserve(refs.gallery.lastElementChild);
+  }
     const text = e.currentTarget.elements.searchQuery.value.trim();
     if (!text) {
     alert('Enter the text!');
@@ -44,9 +47,12 @@ function printResult(photos) {
     loadMoreBtn.disable();
     const photoArray = photos.data.hits;
     arrayLength = photoArray.length;
-    photoQuantity =  photos.data.totalHits;
+    photoQuantity = photos.data.totalHits;
+    loadMoreBtn.show();
+    loadMoreBtn.enable();
 
-    if (photoArray.length === 0) {
+  if (photoArray.length === 0) {
+        loadMoreBtn.hide();
         Notiflix.Notify.failure("Sorry, there are no images matching your search query. Please try again.");
     }
     const markup = createPhotoMarkupList(photoArray);
@@ -54,14 +60,16 @@ function printResult(photos) {
     if (page < 1 && photoArray.length!==0) {
         Notiflix.Notify.success(`Hooray! We found ${photoQuantity} images.`)
     }
-    loadMoreBtn.show();
-    loadMoreBtn.enable();
-    lightbox.refresh();
+  lightbox.refresh();
+  observer.observe(refs.output.lastElementChild);
+  isObserving = true;
 };
+
+
 async function onSearch() {
    try {
-        const photos = await api.fetchPhotos();
-        printResult(photos);
+     const photos = await api.fetchPhotos();
+       printResult(photos);
     } catch (error) {
         handleError(error);
     }
@@ -69,12 +77,11 @@ async function onSearch() {
 
 function handleError (error) {
     resetView();
-    window.removeEventListener('scroll', onScrollThrottled);
-  if (error.response.status === 400) {
-    Notify.failure("We're sorry, but you've reached the end of search results.");
+   if (error.status === 400) {
+    Notiflix.Notify.failure("We're sorry, but you've reached the end of search results.");
     return;
   }
-  Notify.failure('Sorry, there is no response from server. Please try again.');
+  Notiflix.Notify.failure('Sorry, there is no response from server. Please try again.');
 };
 
 async function onLoadMore () {
@@ -84,7 +91,6 @@ async function onLoadMore () {
         setTimeout(() => {
           Notiflix.Notify.failure("We're sorry, but you've reached the end of search results.");
         }, 500);
-        window.removeEventListener('scroll', onScrollThrottled);
         return;
     }
     await onSearch();
@@ -98,17 +104,12 @@ function resetView (){
   loadMoreBtn.hide();
 }
 
-async function onScroll() {
-    const {
-            scrollTop,
-            scrollHeight,
-            clientHeight
-    } = document.documentElement;
-    const { height: cardHeight } = document.querySelector(".gallery").firstElementChild.getBoundingClientRect();
-    if (scrollTop + clientHeight >= scrollHeight - 50) {
-   window.scrollBy({top: cardHeight * 2,  behavior: "smooth"});
-   await onLoadMore();
-  }
+function onObserve(entries, observer) {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      observer.unobserve(entry.target);
+      onLoadMore();
+    }
+  });
 }
 
-window.addEventListener('scroll', onScrollThrottled);
